@@ -7,10 +7,9 @@ export async function onRequest(context) {
     return new Response("Missing ?url=", { status: 400 })
   }
 
-  // 🔐 DOMAIN WHITELIST (WAJIB EDIT sesuai target kamu)
+  // 🔐 whitelist domain target
   const allowedDomains = [
-    "golivenow71.com",
-    "livecdnem.com"
+    "live.vivo200.com"
   ]
 
   const isAllowed = allowedDomains.some(domain =>
@@ -24,13 +23,10 @@ export async function onRequest(context) {
   try {
     const headers = new Headers()
     headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-    headers.set("Referer", "https://xlz.livecdnem.com/")
-    headers.set("Origin", "https://xlz.livecdnem.com")
+    headers.set("Referer", "https://wikisport.cc/")
+    headers.set("Origin", "https://wikisport.cc")
 
-    const response = await fetch(targetUrl, {
-      headers,
-      cf: { cacheEverything: false }
-    })
+    const response = await fetch(targetUrl, { headers })
 
     if (!response.ok) {
       return new Response("Upstream error", { status: response.status })
@@ -38,14 +34,13 @@ export async function onRequest(context) {
 
     const contentType = response.headers.get("content-type") || ""
 
-    // 🎯 Kalau playlist (.m3u8)
+    // Kalau m3u8 → rewrite
     if (
       contentType.includes("application/vnd.apple.mpegurl") ||
-      contentType.includes("application/x-mpegURL") ||
       targetUrl.endsWith(".m3u8")
     ) {
-      let text = await response.text()
 
+      let text = await response.text()
       const base = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1)
 
       const rewritten = text
@@ -73,7 +68,7 @@ export async function onRequest(context) {
       })
     }
 
-    // 🎯 Segment (.ts / .m4s)
+    // Segment (.ts)
     return new Response(response.body, {
       headers: {
         "Content-Type": contentType || "video/mp2t",
