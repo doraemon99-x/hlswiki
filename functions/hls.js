@@ -1,82 +1,29 @@
-export async function onRequest(context) {
-  const { request } = context
-  const reqUrl = new URL(request.url)
-  const targetUrl = reqUrl.searchParams.get("url")
+export async function onRequest({ request }) {
+  const url = new URL(request.url)
+  const target = url.searchParams.get("url")
+  if (!target) return new Response("No URL", { status: 400 })
 
-  if (!targetUrl) {
-    return new Response("Missing ?url=", { status: 400 })
-  }
+  const headers = new Headers()
+  const range = request.headers.get("range")
+  if (range) headers.set("range", range)
 
-  // 🔐 whitelist domain target
-  const allowedDomains = [
-    "live.vivo200.com"
-  ]
+  // spoof biar lolos proteksi origin
+  headers.set("user-agent", "Mozilla/5.0")
+  headers.set("referer", "https://v.567440.com/")
+  headers.set("origin", "https://v.567440.com")
 
-  const isAllowed = allowedDomains.some(domain =>
-    targetUrl.includes(domain)
-  )
+  const res = await fetch(target, { headers })
 
-  if (!isAllowed) {
-    return new Response("Forbidden", { status: 403 })
-  }
+  const newHeaders = new Headers(res.headers)
 
-  try {
-    const headers = new Headers()
-    headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-    headers.set("Referer", "https://v.567440.com/")
-    headers.set("Origin", "https://v.567440.com")
+  // 🔥 override CORS
+  newHeaders.set("Access-Control-Allow-Origin", "*")
+  newHeaders.set("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS")
+  newHeaders.set("Access-Control-Allow-Headers", "*")
+  newHeaders.set("Access-Control-Expose-Headers", "*")
 
-    const response = await fetch(targetUrl, { headers })
-
-    if (!response.ok) {
-      return new Response("Upstream error", { status: response.status })
-    }
-
-    const contentType = response.headers.get("content-type") || ""
-
-    // Kalau m3u8 → rewrite
-    if (
-      contentType.includes("application/vnd.apple.mpegurl") ||
-      targetUrl.endsWith(".m3u8")
-    ) {
-
-      let text = await response.text()
-      const base = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1)
-
-      const rewritten = text
-        .split("\n")
-        .map(line => {
-          line = line.trim()
-
-          if (line.startsWith("#") || line === "") {
-            return line
-          }
-
-          const absolute = line.startsWith("http")
-            ? line
-            : base + line
-
-          return `/hls?url=${encodeURIComponent(absolute)}`
-        })
-        .join("\n")
-
-      return new Response(rewritten, {
-        headers: {
-          "Content-Type": "application/vnd.apple.mpegurl",
-          "Access-Control-Allow-Origin": "*"
-        }
-      })
-    }
-
-    // Segment (.ts)
-    return new Response(response.body, {
-      headers: {
-        "Content-Type": contentType || "video/mp2t",
-        "Access-Control-Allow-Origin": "*"
-      }
-    })
-
-  } catch (err) {
-    return new Response("Internal error", { status: 500 })
-  }
+  return new Response(res.body, {
+    status: res.status,
+    headers: newHeaders
+  })
 }
