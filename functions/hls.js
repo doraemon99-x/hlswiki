@@ -23,8 +23,8 @@ export async function onRequest(context) {
   try {
     const headers = new Headers()
     headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-    headers.set("Referer", "https://wikisport.cc/")
-    headers.set("Origin", "https://wikisport.cc")
+    headers.set("Referer", "https://v.567440.com/")
+    headers.set("Origin", "https://v.567440.com")
 
     const response = await fetch(targetUrl, { headers })
 
